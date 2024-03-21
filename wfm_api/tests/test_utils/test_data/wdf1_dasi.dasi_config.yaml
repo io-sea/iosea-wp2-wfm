@@ -1,0 +1,7 @@
+---
+schema: /tmp/wdf1_dasi.schema.yaml
+catalogue: toc
+store: file
+spaces:
+  - roots:
+    - path: /mnt_points/dasi

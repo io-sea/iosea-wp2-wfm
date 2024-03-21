@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wfm-api"
+version = "1.6.0"
+description = "API for WFM product"
+authors = [{ name = "BDS Data Management team", email = "bds-datamanagement@eviden.com" }]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+  "sqlalchemy==1.4.45",
+  "pax==5.1.0",
+]
+
+[tool.setuptools.packages.find]
+exclude = ["integration*", "tests*"]
+namespaces = true
+
+[project.scripts]
+wfm-api = "wfm_api.app:main"
+
+[project.optional-dependencies]
+cip = [
+  "mypy==0.910",
+  "pytest==6.2.*",
+  "pytest-cov==3.0.*",
+  "pylint==2.14.*",
+  "mkdocs==1.3.*",
+]

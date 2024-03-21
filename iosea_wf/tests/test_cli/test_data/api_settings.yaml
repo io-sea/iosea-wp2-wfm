@@ -1,0 +1,46 @@
+database:
+  enabled: true
+  name: ":memory:"
+
+server:
+  host: 0.0.0.0
+  port: '{UID}'
+  root_path: "/"
+
+metadata:
+  title: CLI TEST WFM API
+  description: API with WFM database and Slurm enabled
+
+command:
+  job_submission_cmd: /usr/bin/srun
+  job_control_cmd: /usr/bin/scontrol
+  job_batch_cmd: /usr/bin/sbatch
+  job_cancel_cmd: /usr/bin/scancel
+  job_state_cmd: /usr/bin/squeue
+
+jobmanager:
+  name: 'SLURM'
+
+logging:
+  level: DEBUG
+  path: "/tmp/{USER}-test-api_from_cli.log"
+  stderr: false
+
+oidc:
+  enabled: false
+  issuer_url: "http://localhost/auth"
+  client_id: "io-instrumentation"
+  algorithms: [RS456, RS256]
+  realm: "bird"
+
+cors:
+  allow_credentials: True
+  allow_origins:
+    - "*"
+  allow_methods:
+    - GET
+    - PATCH
+    - POST
+    - PUT
+    - DELETE
+    - HEAD

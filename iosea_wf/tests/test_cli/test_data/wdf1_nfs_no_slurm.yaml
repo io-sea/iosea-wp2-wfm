@@ -1,0 +1,22 @@
+---
+workflow:
+  name: My_Workflow1_nfs
+
+services:
+  - name: lqcd-nfs1
+    type: NFS
+    attributes:
+      namespace: /tmp/dataset.txt
+      mountpoint: /scratch/derbeyn/mnt_point
+      storagesize: 2Gi
+
+steps:
+  - name: step_A1
+    command: "/tmp/fake_sbatch.sh totoA1"
+    services:
+      - name: lqcd-nfs1
+
+  - name: step_B1
+    command: "/tmp/fake_sbatch.sh totoB1"
+    services:
+      - name: lqcd-nfs1

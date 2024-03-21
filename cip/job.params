@@ -1,0 +1,54 @@
+jobParams = [
+    DISTRIB: [
+        type: 'choice',
+        descr: 'Distribution',
+        val: ['RHEL88']
+    ],
+    PYTHON_VERSION: [
+        type: 'choice',
+        descr: 'Python version to build with',
+        val: ['3.9']
+    ],
+    ARCH: [
+        type: 'string',
+        descr: 'Architecture',
+        val: "X86_64"
+    ],
+    PUBLISH: [
+        type: 'booleanParam',
+        descr: "Publish rpms and wheels",
+        val:  false
+    ],
+    FORCE_CLEAN: [
+        type: 'booleanParam',
+        desc: "Clean repository before publish (default is false)",
+        val: false
+    ],
+    COMPVERS: [
+        type: 'string',
+        descr: 'Component version',
+        val: '1.6.0'
+    ],
+    COMPVERS_IMAGES: [
+        type: 'string',
+        descr: 'Image version',
+        val: '1.6.0'
+    ],
+    BUILDTYPE: [
+        type: 'choice',
+        descr: "Build type (snapshot / release)",
+        val: ['snapshot', 'release']
+    ],
+    GIT_TAG: [
+        type: 'string',
+        descr: "Git tag (mandatory to build a release)",
+        val: ""
+    ],
+    BUILDSTAGE: [
+        type: 'choice',
+        descr: "Build stage: full (default) or onlyrpm (no integration tests)",
+        val: ['full', 'onlyrpm']
+    ]
+]
+
+return this

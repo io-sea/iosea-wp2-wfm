@@ -1,0 +1,40 @@
+TODO list:
+
+extra-low priority:
+==================
+- "wfm_api/wfm_api/models/log_obj_activity_metadata.py"
+- "wfm_api/wfm_api/utils/utils.py"
+  - (keys analyzed through pydantic)
+  - avoid raising HTTPException (not to do systematically)
+- "wfm_api/wfm_api/routers/step_router.py":
+  - call to build_run_id()
+
+
+low priority:
+============
+- "wfm_api/wfm_api/models/session_metadata.py"
+- "wfm_api/wfm_api/models/service_metadata.py"
+- "wfm_api/wfm_api/models/step_metadata.py"
+ 
+
+TODO:
+
+- when datamovers are introduced:
+  - "wfm_api/wfm_api/utils/utils.py": search_session_undefined_variables
+- in BRDM-6059:
+  - "wfm_api/wfm_api/utils/database/wfm_database.py":
+    - enum for step status
+- when authentication implemented (multi-user supported for the wfm-api):
+  - "wfm_api/wfm_api/utils/database/wfm_database.py":
+    - get_session_info_from_name()
+    - update_session_status()
+  - "wfm_api/wfm_api/routers/step_router.py": all routers
+  - "wfm_api/wfm_api/routers/service_router.py": all routers
+  - "wfm_api/wfm_api/routers/session_router.py": all routers
+- when lazy service start becomes obsolete:
+  - "wfm_api/wfm_api/routers/step_router.py"
+    - call to all_services_allocated()
+- when build fails:
+  - "cip/Jenkinsfile" 
+- job manager refactoring:
+  - the job manager CommandsSettings (job_XXX_cmd) should be defined in the JobManager class

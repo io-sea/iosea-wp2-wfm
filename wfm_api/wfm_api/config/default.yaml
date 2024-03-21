@@ -1,0 +1,57 @@
+# Default configuration if Workflow Manager API
+server:
+  host: 0.0.0.0
+  port: '{UID}'
+  root_path: "/"
+  workers: 1
+  reload: false
+  offline_doc: true
+
+metadata:
+  title: WFM API
+  description: API for Workflow Manager
+
+command:
+  job_submission_cmd: /usr/bin/srun
+  job_control_cmd: /usr/bin/scontrol
+  job_batch_cmd: /usr/bin/sbatch
+  job_cancel_cmd: /usr/bin/scancel
+  job_state_cmd: /usr/bin/squeue
+
+jobmanager:
+  name: 'SLURM'
+
+logging:
+  level: INFO
+  path: /tmp/{USER}-wfm-api.log
+  stderr: false
+
+resourcemanager:
+  name: "NONE"
+  version: "v2.0.0"
+  host: 0.0.0.0
+  port: 9999
+  root_path: "/"
+
+oidc:
+  enabled: false
+  issuer_url: "http://localhost/auth"
+  client_id: "io-instrumentation"
+  algorithms: [RS456, RS256]
+  realm: "bird"
+
+database:
+  enabled: true
+  name: "{HOME}/.wfm-api.db"
+
+cors:
+  allow_credentials: True
+  allow_origins:
+    - "*"
+  allow_methods:
+    - GET
+    - PATCH
+    - POST
+    - PUT
+    - DELETE
+    - HEAD

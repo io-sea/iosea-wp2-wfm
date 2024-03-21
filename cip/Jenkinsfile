@@ -1,0 +1,185 @@
+//  Import the main branch of Jenkins shared library from data management
+@Library('dm-shared-lib@main') _
+
+// This import is useful for displaying all stages, even if they are not executed.
+import org.jenkinsci.plugins.pipeline.modeldefinition.Utils
+
+
+def sfEnvironment = [
+    "SF_BUILDER_VERSION=v2.3"
+]
+
+def setEnvDM() {
+    env.CIPDIR     = 'cip'
+    // WORKSPACE variable is not defined in JenkinsFile, only available in workflows
+    // Workspace is the place that is visible from Jenkinsfile, and mounted in workflow.
+    // In both cases, we can refer to workspace as current directory when Jenkinsfile/workflow starts
+    // thus simplest use of BUILDDIR is with a relative path
+    env.BUILDDIR   = './build'
+    // this needs to be a relative path and not an absolute path. artifacts are copied in
+    // $EXPORTDIR in workflow, current directory is mounted in the container signing RPMs at the
+    // publication stage thus $EXPORTDIR must be a relative path.
+    // All of this must be in the workspace folder otherwise you'll need to stash/unstash artifacts to
+    // make them available at publication time.
+    env.EXPORTDIR  = 'sf-builder-export'
+}
+
+sfParameters.initParams('cip/job.params', [
+    disableConcurrentBuilds(),
+    buildDiscarder(logRotator(numToKeepStr: '20')),
+    pipelineTriggers(createPipelineTriggers())
+])
+
+def createPipelineTriggers() {
+    // Cron syntax document at https://www.jenkins.io/doc/book/pipeline/syntax/#cron-syntax
+    // Build once a day, between 2am and 6am, every weekday
+    if (dmSharedLibFunctions.isAPublishableBranch()) { return [cron('H H(2-6) * * 1-5')] }
+    else { return [] }
+}
+
+def String getPlatformAndRegistryParams(String myArch) {
+    // ulimit parameters are required by criterion tests (otherwise they get stalled on startup)
+    def String params = "--network=host --ulimit memlock=-1 --ulimit nofile=1024000:1024000"
+
+    if (myArch =="aarch64") {
+        params += " --platform=linux/arm64"
+    } else {
+        params += " --platform=linux/amd64"
+    }
+    return params
+}
+
+def runBuildAndUnitTests(String myArch, String myDistrib, String myBuildType) {
+    // Pipeline to run unit tests and build wheels and rpms
+    docker.withRegistry("https://registry.sf.bds.atos.net", "artifactory-${env.TEAM}-user") {
+        docker.image("brsf-docker-release/brsf/sf-builder:${SF_BUILDER_VERSION}-${myDistrib.toLowerCase()}")
+        .inside(getPlatformAndRegistryParams(myArch)){
+            // we're in a new docker with clean workspace => unstash
+            unstash "sf-workspace"
+            withEnv( [
+                "WORKFLOW=${CIPDIR}/workflow-publish.yml"
+            ] ) {
+                sh """
+                    sf-builder --workflow ${WORKFLOW} --os ${myDistrib} --arch ${myArch} --mode ${myBuildType} --workspace .
+                """
+                stage("Stash Build and Unit test workspace") {
+                    // Stash Unit test workspace to be unstashed back in the final x86 worker
+                    stash name: "sf-workspace-ut-${BUILD_NUMBER}", includes: "**", excludes: ".**"
+                }
+            }
+        }
+    }
+}
+
+
+try {
+    ansiColor('xterm') {
+
+        sfPipeline('x86', sfEnvironment) {
+            stage("Set parameters") {
+                setEnvDM()
+            }
+
+            stage("Prepare workspace") {
+                dmSharedLibStages.cleanWorkspaceAndCheckout()
+
+                withEnv( [
+                    "COMPVERS=${env.COMPVERS}",
+                    "BUILDTYPE=${env.BUILDTYPE}",
+                    "PYTHON_VERSION=${env.PYTHON_VERSION}",
+                    "WORKFLOW=${CIPDIR}/workflow-publish.yml"
+                ] ) {
+                    sh '''
+                        #!/bin/bash
+                        sed -i -e \"s/@COMPVERS@/${COMPVERS}/\" ${WORKFLOW}
+                        sed -i -e \"s/@BUILDTYPE@/${BUILDTYPE}/\" ${WORKFLOW}
+                        sed -i -e \"s/@PYTHON_VERSION@/${PYTHON_VERSION}/g\" ${WORKFLOW}
+                        PYTHON_VERSION_PKG="${PYTHON_VERSION//./}"
+                        sed -i -e \"s/@PYTHON_VERSION_PKG@/${PYTHON_VERSION_PKG}/g\" ${WORKFLOW}
+                    '''
+                    withCredentials( [usernamePassword(
+                        credentialsId: "artifactory-${env.TEAM}-user",
+                        usernameVariable: 'USERNAME',
+                        passwordVariable: 'PASSWORD'
+                    )] ) {
+                        sh '''
+                            sed -i -e \"s/@ARTIFACTORY_USERNAME@/${USERNAME}/\" ${WORKFLOW}
+                            sed -i -e \"s/@ARTIFACTORY_PASSWORD@/${PASSWORD}/\" ${WORKFLOW}
+                        '''
+                    }
+                }
+
+                // Stash workspace to be unstashed in other nodes/workers
+                stash name: "sf-workspace", includes: "**", excludes: ".**"
+            }
+        }
+
+        sfPipeline('x86', sfEnvironment) {
+            stage("Build API in ${env.BUILDTYPE} mode and run unit tests") {
+                runBuildAndUnitTests(env.ARCH, env.DISTRIB, env.BUILDTYPE)
+            }
+
+            stage("Unstash workspaces") {
+                // unstash the unit test sf-workspace from previous pipeline to get all unit test reports and artifacts
+                unstash "sf-workspace-ut-${BUILD_NUMBER}"
+            }
+
+            stage('Sonarqube analysis') {
+                echo '[INFO] Postprocess reports'
+
+                withCredentials( [usernamePassword(
+                    credentialsId: "sonarqube-${env.TEAM}-user",
+                    usernameVariable: 'SONARUSER',
+                    passwordVariable: 'SONARPWD'
+                )] ) {
+                    def customSonarProperties = [ login: env.SONARUSER, password: env.SONARPWD ]
+                    sfScanner.scan('cip/sonar-project.properties', customSonarProperties)
+                }
+            }
+
+            // Wait for quality gate results
+            stage("Checking Quality gate success") {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate(abortPipeline: false)
+                }
+            }
+
+            // Do not publish artifacts if all test suites have not been run
+            stage("Publish API wheels and rpms") {
+                if (dmSharedLibFunctions.isToBePublished()) {
+                    withCredentials( [usernamePassword(
+                        credentialsId: "artifactory-${env.TEAM}-user",
+                        usernameVariable: 'USERNAME',
+                        passwordVariable: 'PASSWORD'
+                    )] ) {
+                        Map uploadSpec = [
+                            'pypi': [
+                                "${env.EXPORTDIR}/*.whl",
+                                "${env.EXPORTDIR}/*tar.gz"
+                            ],
+                        ]
+                        sfPublisher.publish([
+                            arch: env.ARCH,
+                            distrib: env.DISTRIB,
+                            forceCleanRepo: env.FORCE_CLEAN.toBoolean(),
+                            username: env.USERNAME,
+                            password: env.PASSWORD],
+                            uploadSpec)
+                    }
+                } else {
+                    echo 'Skipping stage...'
+                    Utils.markStageSkippedForConditional(STAGE_NAME)
+                }
+            }
+
+            stage("Publish Jenkins reports") {
+                recordIssues(enabledForFailure: true,
+                             tools: [pyLint(pattern: "${env.EXPORTDIR}/ci_reports/pylint.log")])
+            }
+        }
+    }
+} catch (exception) {
+    dmSharedLibFunctions.sendWebhook(exception)
+} finally {
+    dmSharedLibFunctions.sendWebhook()
+}

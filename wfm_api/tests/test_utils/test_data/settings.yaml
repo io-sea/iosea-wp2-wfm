@@ -1,0 +1,52 @@
+database:
+  enabled: true
+  name: "/tmp/{USER}-wfm_test.db"
+
+server:
+  host: 0.0.0.0
+  port: '{UID}'
+  root_path: "/"
+
+metadata:
+  title: TEST WFM API
+  description: API with WFM database
+
+logging:
+  level: DEBUG
+  path: "/tmp/{USER}-test-api.log"
+
+command:
+  job_submission_cmd: /usr/bin/echo
+  job_control_cmd: /usr/bin/echo
+  job_batch_cmd: /usr/bin/echo
+  job_cancel_cmd: /usr/bin/echo
+  job_state_cmd: /usr/bin/echo
+
+jobmanager:
+  name: 'fake'
+
+resourcemanager:
+  name: "NONE"
+  version: "v2.0.0"
+  host: 0.0.0.0
+  port: 9999
+  root_path: "/"
+
+oidc:
+  enabled: false
+  issuer_url: "http://localhost/auth"
+  client_id: "io-instrumentation"
+  algorithms: [RS456, RS256]
+  realm: "bird"
+
+cors:
+  allow_credentials: True
+  allow_origins:
+    - "*"
+  allow_methods:
+    - GET
+    - PATCH
+    - POST
+    - PUT
+    - DELETE
+    - HEAD

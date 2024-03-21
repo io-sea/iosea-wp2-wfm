@@ -1,0 +1,63 @@
+workflow:
+  activities:
+    yum_dependency:
+      info: "Resolve dependencies"
+      context:
+        yum:
+          - name: "python@PYTHON_VERSION_PKG@"
+          - name: "python@PYTHON_VERSION_PKG@-devel"
+          - name: "python@PYTHON_VERSION_PKG@-wheel"
+      stop_if_error: true
+      disabled: false
+
+    shell:
+      info: "Build and publish the results"
+      context:
+        cmdline:
+          - label: "workaround: python@PYTHON_VERSION@ removes python symlink"
+            cmd: "ln -s /usr/bin/python3 /usr/bin/python"
+            user: "root"
+          - label: "set pip to use artifactory for root"
+            cmd: "pip@PYTHON_VERSION@ config set global.trusted-host ${ARTIFACTORY_HOST} && pip@PYTHON_VERSION@ config set global.index-url http://@ARTIFACTORY_USERNAME@:@ARTIFACTORY_PASSWORD@@${ARTIFACTORY_HOST}/artifactory/api/pypi/brdm-pypi-@BUILDTYPE@/simple"
+            user: "root"
+          - label: "set pip to use artifactory for sf-user"
+            cmd: "pip@PYTHON_VERSION@ config set global.trusted-host ${ARTIFACTORY_HOST} && pip@PYTHON_VERSION@ config set global.index-url http://@ARTIFACTORY_USERNAME@:@ARTIFACTORY_PASSWORD@@${ARTIFACTORY_HOST}/artifactory/api/pypi/brdm-pypi-@BUILDTYPE@/simple"
+            user: "sf-user"
+          - label: "install python tools"
+            cmd: "pip@PYTHON_VERSION@ install pip --upgrade invoke pip setuptools"
+            user: "sf-user"
+          - label: "Install CIP requirements"
+            cmd: "invoke install-build-environment"
+            user: "sf-user"
+          - label: "Create export directory for artifactory"
+            cmd: "mkdir -p ${EXPORTDIR} && mkdir -p ${EXPORTDIR}/ci_reports"
+            user: "sf-user"
+          # Run unit tests with coverage
+          - label: "Install all packages in a venv"
+            cmd: "invoke install --extra cip --venv"
+            user: "sf-user"
+          - label: "Run unit tests and coverage in a venv"
+            cmd: "invoke test --coverage --venv --report cov.xml"
+            user: "sf-user"
+          - label: "Move pycoverage XML report into the export dir"
+            cmd: "cp -vp cov.xml ${EXPORTDIR}/ci_reports/"
+            user: "sf-user"
+          # Run python linter
+          - label: "Run pylint"
+            cmd: "invoke lint --output-file pylint.log --rc-file ../tools/pylintrc"
+            user: "sf-user"
+          - label: "Move the report to the export dir"
+            cmd: "cp -vp pylint.log ${EXPORTDIR}/ci_reports/"
+            user: "sf-user"
+          # Build the API wheels
+          - label: "Build the API wheels"
+            cmd: "invoke build --outdir ../dist --version @COMPVERS@ --with-deps"
+            user: "sf-user"
+          - label: "Move the wheels into export directory"
+            cmd: "cp -vRp ./dist/*.whl ${EXPORTDIR}"
+            user: "sf-user"
+          - label: "Build the tar.gz containing the whole dependencies and move them to the export directory"
+            cmd: "invoke bundle --archive-name iosea_all --build-dir . --build-folder dist && mv iosea_all.tar.gz ${EXPORTDIR}"
+            user: "sf-user"
+      stop_if_error: true
+      disabled: false

@@ -1,0 +1,14 @@
+# Default configuration of iosea-wf command
+server:
+  host: 0.0.0.0
+  port: '{UID}'
+  root_path: "/"
+
+logging:
+  level: INFO
+  path: /tmp/{USER}-iosea-wf.log
+  stderr: true
+
+metadata:
+  title: iosea-wf command
+  description: CLI for the Workflow Manager

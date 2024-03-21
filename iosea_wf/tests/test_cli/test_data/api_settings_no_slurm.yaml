@@ -1,0 +1,46 @@
+database:
+  enabled: true
+  name: ":memory:"
+
+server:
+  host: 0.0.0.0
+  port: '{UID}'
+  root_path: "/"
+
+metadata:
+  title: CLI TEST WFM API
+  description: API with WFM database and no Slurm
+
+command:
+  job_submission_cmd: /tmp/fake_sbatch.sh
+  job_control_cmd: /tmp/fake_sbatch.sh
+  job_batch_cmd: /tmp/fake_sbatch.sh
+  job_cancel_cmd: /tmp/fake_sbatch.sh
+  job_state_cmd: /bin/true
+
+jobmanager:
+  name: 'fake'
+
+logging:
+  level: DEBUG
+  path: "/tmp/{USER}-test-api_from_cli.log"
+  stderr: false
+  
+oidc:
+  enabled: false
+  issuer_url: "http://localhost/auth"
+  client_id: "io-instrumentation"
+  algorithms: [RS456, RS256]
+  realm: "bird"
+
+cors:
+  allow_credentials: True
+  allow_origins:
+    - "*"
+  allow_methods:
+    - GET
+    - PATCH
+    - POST
+    - PUT
+    - DELETE
+    - HEAD

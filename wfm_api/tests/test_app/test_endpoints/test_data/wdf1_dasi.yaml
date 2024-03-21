@@ -1,0 +1,22 @@
+---
+workflow:
+  name: My_Workflow1_dasi
+
+services:
+  - name: lqcd-dasi
+    type: DASI
+    attributes:
+      dasiconfig: /tmp/wdf1_dasi.dasi_config.yaml
+      namespace: /tmp/
+      storagesize: 2G
+
+steps:
+  - name: step_A1
+    command: "sbatch totoA1"
+    services:
+      - name: lqcd-dasi
+
+  - name: step_B1
+    command: "sbatch totoB1"
+    services:
+      - name: lqcd-dasi

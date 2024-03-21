@@ -1,0 +1,21 @@
+workflow:
+  name: My_Workflow1_sbb
+
+services:
+  - name: lqcd-sbb1
+    type: SBB
+    attributes:
+      targets: /scratch1/derbeyn/lqcd1
+      flavor : Small2
+
+steps:
+    - name: step_A1
+      command: "sbatch totoA1"
+      services:
+        - name: lqcd-sbb1
+
+    - name: step_B1
+      command: "sbatch totoB1"
+      services:
+        - name: lqcd-sbb1
+

@@ -1,0 +1,21 @@
+workflow:
+  name: My_Workflow1
+
+services:
+  - name: lqcd-sbb1
+    type: SBB
+    attributes:
+      targets: /scratch/
+      flavor: Small
+
+steps:
+  - name: step_A1
+    command: "sbatch /tmp/sbatch_script.sh"
+    services:
+      - name: lqcd-sbb1
+
+    - name : step_B1
+      command: "sbatch /tmp/sbatch_script.sh"
+      services:
+        - name: lqcd-sbb1
+
